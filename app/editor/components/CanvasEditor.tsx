@@ -94,15 +94,15 @@ export default function CanvasEditor() {
       let sourceWidth = img.width;
       let sourceHeight = img.height;
 
-      if (imgAspect > scaledAspect) {
-        // Image is wider - crop width to match scaled ratio
-        sourceWidth = img.height * scaledAspect;
-        sourceX = (img.width - sourceWidth) / 2;
-      } else {
-        // Image is taller - crop height to match scaled ratio
-        sourceHeight = img.width / scaledAspect;
-        sourceY = (img.height - sourceHeight) / 2;
-      }
+      // if (imgAspect > scaledAspect) {
+      //   // Image is wider - crop width to match scaled ratio
+      //   sourceWidth = img.height * scaledAspect;
+      //   sourceX = (img.width - sourceWidth) / 2;
+      // } else {
+      //   // Image is taller - crop height to match scaled ratio
+      //   sourceHeight = img.width / scaledAspect;
+      //   sourceY = (img.height - sourceHeight) / 2;
+      // }
 
       // Calculate centered position for scaled image
       const offsetX = (CANVAS_WIDTH - scaledWidth) / 2;
