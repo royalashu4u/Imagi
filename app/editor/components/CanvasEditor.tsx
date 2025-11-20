@@ -6,7 +6,7 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
-  const [isItalic, setIsItalic] = useState(true);
+  const [italicIntensity, setItalicIntensity] = useState(15); // 0-100, controls skew angle
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -109,8 +109,7 @@ export default function CanvasEditor() {
       
       // Set text properties with custom font
       const fontFamily = fontLoaded ? "FatFrank Heavy" : "Arial, sans-serif";
-      const fontStyle = isItalic ? "italic bold" : "bold";
-      ctx.font = `${fontStyle} ${textSize}px ${fontFamily}`;
+      ctx.font = `bold ${textSize}px ${fontFamily}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineJoin = "round";
@@ -188,14 +187,14 @@ export default function CanvasEditor() {
         } else {
           // Use adjusted font size for measurement
           const tempFontSize = index === 1 ? secondLineFontSize : textSize;
-          ctx.font = `${fontStyle} ${tempFontSize}px ${fontFamily}`;
+          ctx.font = `bold ${tempFontSize}px ${fontFamily}`;
           const metrics = ctx.measureText(line);
           maxWidth = Math.max(maxWidth, metrics.width);
         }
       });
       
       // Reset font to original
-      ctx.font = `${fontStyle} ${textSize}px ${fontFamily}`;
+      ctx.font = `bold ${textSize}px ${fontFamily}`;
       
       // Account for stroke width in bounds (shadow offset)
       const strokePadding = 15;
@@ -220,6 +219,14 @@ export default function CanvasEditor() {
       ctx.rotate(rotationRad);
       ctx.translate(-finalX, -actualTextY);
 
+      // Apply italic skew transformation (intensity-based)
+      // Convert intensity (0-100) to skew angle in radians
+      // 0 = no skew, 100 = maximum skew (~15 degrees)
+      const skewAngle = (italicIntensity / 100) * (15 * Math.PI / 180); // Max 15 degrees
+      if (skewAngle !== 0) {
+        ctx.transform(1, 0, Math.tan(skewAngle), 1, 0, 0);
+      }
+
       // Draw each line with shadow and neon green fill (no white outline)
       let currentY = startY;
       displayLines.forEach((line, index) => {
@@ -228,7 +235,7 @@ export default function CanvasEditor() {
         const currentLineHeight = lineFontSize * lineHeight;
         
         // Set font size for this line
-        ctx.font = `${fontStyle} ${lineFontSize}px ${fontFamily}`;
+        ctx.font = `bold ${lineFontSize}px ${fontFamily}`;
         
         // Layer 1: Dark shadow (outermost, drawn on the left side)
         ctx.strokeStyle = "#000000";
@@ -290,7 +297,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, isItalic]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, italicIntensity]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -679,6 +686,22 @@ export default function CanvasEditor() {
               max="120"
               value={textSize}
               onChange={(e) => setTextSize(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Italic Intensity */}
+          <div className="space-y-2">
+            <label htmlFor="italic-intensity" className="block text-sm font-medium">
+              Italic Intensity: {italicIntensity}%
+            </label>
+            <input
+              type="range"
+              id="italic-intensity"
+              min="0"
+              max="100"
+              value={italicIntensity}
+              onChange={(e) => setItalicIntensity(Number(e.target.value))}
               className="w-full"
             />
           </div>
