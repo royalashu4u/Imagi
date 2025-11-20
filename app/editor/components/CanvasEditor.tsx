@@ -6,6 +6,7 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
+  const [lineSpacing, setLineSpacing] = useState(0); // Spacing between first and second line (in pixels)
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -173,8 +174,9 @@ export default function CanvasEditor() {
       // Calculate total height with different line heights
       const firstLineHeight = textSize * lineHeight;
       const secondLineHeight = displayLines.length > 1 ? secondLineFontSize * lineHeight : firstLineHeight;
+      const extraSpacing = displayLines.length > 1 ? lineSpacing : 0; // Add extra spacing only if there's a second line
       const totalHeight = displayLines.length > 1 
-        ? firstLineHeight + secondLineHeight + (displayLines.length - 2) * firstLineHeight
+        ? firstLineHeight + secondLineHeight + extraSpacing + (displayLines.length - 2) * firstLineHeight
         : displayLines.length * firstLineHeight;
       
       const startY = actualTextY - (totalHeight - firstLineHeight) / 2;
@@ -249,6 +251,10 @@ export default function CanvasEditor() {
         
         // Move to next line position
         currentY += currentLineHeight;
+        // Add extra spacing after first line if there's a second line
+        if (index === 0 && displayLines.length > 1) {
+          currentY += lineSpacing;
+        }
       });
 
       // Restore rotation transform
@@ -298,7 +304,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -687,6 +693,22 @@ export default function CanvasEditor() {
               max="120"
               value={textSize}
               onChange={(e) => setTextSize(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Line Spacing */}
+          <div className="space-y-2">
+            <label htmlFor="line-spacing" className="block text-sm font-medium">
+              Line Spacing: {lineSpacing}px
+            </label>
+            <input
+              type="range"
+              id="line-spacing"
+              min="-50"
+              max="100"
+              value={lineSpacing}
+              onChange={(e) => setLineSpacing(Number(e.target.value))}
               className="w-full"
             />
           </div>
