@@ -28,10 +28,23 @@ export default function CanvasEditor() {
   const [textBounds, setTextBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   
+  // Interactive image positioning and manipulation
+  const [imageX, setImageX] = useState<number | null>(null);
+  const [imageY, setImageY] = useState<number | null>(null);
+  const [isImageSelected, setIsImageSelected] = useState(false);
+  const [imageBounds, setImageBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const maskRef = useRef<HTMLImageElement | null>(null);
-  const dragStateRef = useRef({ isDragging: false, isTextSelected: false, dragStart: { x: 0, y: 0 }, dragStartTextPos: { x: 0, y: 0 } });
+  const dragStateRef = useRef({ 
+    isDragging: false, 
+    isTextSelected: false, 
+    isImageSelected: false,
+    dragStart: { x: 0, y: 0 }, 
+    dragStartTextPos: { x: 0, y: 0 },
+    dragStartImagePos: { x: 0, y: 0 }
+  });
   const rafIdRef = useRef<number | null>(null);
 
   // Canvas dimensions - 9:16 ratio (portrait)
@@ -64,8 +77,15 @@ export default function CanvasEditor() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { 
+      alpha: true,
+      desynchronized: true // Better performance for frequent updates
+    });
     if (!ctx) return;
+
+    // Enable image smoothing for better quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
 
     // Clear canvas
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -74,46 +94,68 @@ export default function CanvasEditor() {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw background image - cover mode: fill entire canvas, crop if needed
+    // Draw background image - show full original image without cropping
     if (imageUrl && imageRef.current) {
       const img = imageRef.current;
       
       // Apply scale factor (convert percentage to multiplier)
       const scale = imageScale / 100;
       
-      // Calculate scaled dimensions
-      const scaledWidth = CANVAS_WIDTH * scale;
-      const scaledHeight = CANVAS_HEIGHT * scale;
-      
-      // Calculate to cover entire canvas (no white gaps)
+      // Calculate image aspect ratio
       const imgAspect = img.width / img.height;
-      const scaledAspect = scaledWidth / scaledHeight;
+      const canvasAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+      
+      // Calculate destination dimensions maintaining aspect ratio
+      let destWidth: number;
+      let destHeight: number;
+      
+      if (imgAspect > canvasAspect) {
+        // Image is wider - fit to canvas width
+        destWidth = CANVAS_WIDTH * scale;
+        destHeight = destWidth / imgAspect;
+      } else {
+        // Image is taller - fit to canvas height
+        destHeight = CANVAS_HEIGHT * scale;
+        destWidth = destHeight * imgAspect;
+      }
 
-      let sourceX = 0;
-      let sourceY = 0;
-      let sourceWidth = img.width;
-      let sourceHeight = img.height;
+      // Calculate position for scaled image (use custom position if set, otherwise center)
+      const baseOffsetX = (CANVAS_WIDTH - destWidth) / 2;
+      const baseOffsetY = (CANVAS_HEIGHT - destHeight) / 2;
+      const offsetX = imageX !== null ? imageX : baseOffsetX;
+      const offsetY = imageY !== null ? imageY : baseOffsetY;
 
-      // if (imgAspect > scaledAspect) {
-      //   // Image is wider - crop width to match scaled ratio
-      //   sourceWidth = img.height * scaledAspect;
-      //   sourceX = (img.width - sourceWidth) / 2;
-      // } else {
-      //   // Image is taller - crop height to match scaled ratio
-      //   sourceHeight = img.width / scaledAspect;
-      //   sourceY = (img.height - sourceHeight) / 2;
-      // }
+      // Store image bounds for hit detection
+      setImageBounds({
+        x: offsetX,
+        y: offsetY,
+        width: destWidth,
+        height: destHeight,
+      });
 
-      // Calculate centered position for scaled image
-      const offsetX = (CANVAS_WIDTH - scaledWidth) / 2;
-      const offsetY = (CANVAS_HEIGHT - scaledHeight) / 2;
-
-      // Draw image with scale applied
+      // Draw full original image without cropping
       ctx.drawImage(
         img,
-        sourceX, sourceY, sourceWidth, sourceHeight, // Source (cropped area)
-        offsetX, offsetY, scaledWidth, scaledHeight // Destination (scaled and centered)
+        0, 0, img.width, img.height, // Source (full original image)
+        offsetX, offsetY, destWidth, destHeight // Destination (scaled and positioned)
       );
+
+      // Draw selection box if image is selected
+      if (isImageSelected && imageBounds) {
+        ctx.save();
+        ctx.strokeStyle = "#3B82F6";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(
+          imageBounds.x,
+          imageBounds.y,
+          imageBounds.width,
+          imageBounds.height
+        );
+        ctx.restore();
+      }
+    } else {
+      setImageBounds(null);
     }
 
     // Draw text if available
@@ -316,7 +358,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale, imageX, imageY, isImageSelected]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -402,15 +444,18 @@ export default function CanvasEditor() {
     };
   };
 
-  // Check if point is inside text bounds
+  // Check if point is inside text bounds (optimized)
   const isPointInTextBounds = (x: number, y: number) => {
     if (!textBounds || !text.trim()) return false;
-    return (
-      x >= textBounds.x &&
-      x <= textBounds.x + textBounds.width &&
-      y >= textBounds.y &&
-      y <= textBounds.y + textBounds.height
-    );
+    const { x: bx, y: by, width, height } = textBounds;
+    return x >= bx && x <= bx + width && y >= by && y <= by + height;
+  };
+
+  // Check if point is inside image bounds (optimized)
+  const isPointInImageBounds = (x: number, y: number) => {
+    if (!imageBounds || !imageUrl) return false;
+    const { x: bx, y: by, width, height } = imageBounds;
+    return x >= bx && x <= bx + width && y >= by && y <= by + height;
   };
 
   // Check if point is on a resize handle
@@ -450,6 +495,7 @@ export default function CanvasEditor() {
       setResizeStart({ x: coords.x, y: coords.y, size: textSize });
     } else if (isPointInTextBounds(coords.x, coords.y)) {
       setIsTextSelected(true);
+      setIsImageSelected(false);
       setIsDragging(true);
       setDragStart({ x: coords.x, y: coords.y });
       
@@ -463,11 +509,39 @@ export default function CanvasEditor() {
       dragStateRef.current = {
         isDragging: true,
         isTextSelected: true,
+        isImageSelected: false,
         dragStart: { x: coords.x, y: coords.y },
         dragStartTextPos: startPos,
+        dragStartImagePos: { x: 0, y: 0 },
+      };
+    } else if (isPointInImageBounds(coords.x, coords.y)) {
+      setIsImageSelected(true);
+      setIsTextSelected(false);
+      setIsDragging(true);
+      setDragStart({ x: coords.x, y: coords.y });
+      
+      // Store initial image position when dragging starts
+      const scale = imageScale / 100;
+      const scaledWidth = CANVAS_WIDTH * scale;
+      const scaledHeight = CANVAS_HEIGHT * scale;
+      const baseOffsetX = (CANVAS_WIDTH - scaledWidth) / 2;
+      const baseOffsetY = (CANVAS_HEIGHT - scaledHeight) / 2;
+      const currentX = imageX !== null ? imageX : baseOffsetX;
+      const currentY = imageY !== null ? imageY : baseOffsetY;
+      const startPos = { x: currentX, y: currentY };
+      
+      // Update ref for window event handlers
+      dragStateRef.current = {
+        isDragging: true,
+        isTextSelected: false,
+        isImageSelected: true,
+        dragStart: { x: coords.x, y: coords.y },
+        dragStartTextPos: { x: 0, y: 0 },
+        dragStartImagePos: startPos,
       };
     } else {
       setIsTextSelected(false);
+      setIsImageSelected(false);
     }
   };
 
@@ -478,14 +552,18 @@ export default function CanvasEditor() {
     
     const coords = getCanvasCoordinates(e);
     
-    // Update cursor
-    const handle = getResizeHandle(coords.x, coords.y);
-    if (handle) {
-      canvas.style.cursor = handle === "nw" || handle === "se" ? "nwse-resize" : "nesw-resize";
-    } else if (isPointInTextBounds(coords.x, coords.y)) {
-      canvas.style.cursor = "move";
-    } else {
-      canvas.style.cursor = "default";
+    // Only update cursor if not dragging/resizing (to reduce overhead)
+    if (!isDragging && !isResizing) {
+      const handle = getResizeHandle(coords.x, coords.y);
+      if (handle) {
+        canvas.style.cursor = handle === "nw" || handle === "se" ? "nwse-resize" : "nesw-resize";
+      } else if (isPointInTextBounds(coords.x, coords.y)) {
+        canvas.style.cursor = "move";
+      } else if (isPointInImageBounds(coords.x, coords.y)) {
+        canvas.style.cursor = "move";
+      } else {
+        canvas.style.cursor = "default";
+      }
     }
     
     // Handle dragging/resizing if active
@@ -521,7 +599,26 @@ export default function CanvasEditor() {
       setTextX(newX);
       setTextY(newY);
       
-      // Throttle canvas redraws using requestAnimationFrame
+      // Schedule canvas redraw using requestAnimationFrame (throttled)
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          drawCanvas();
+          rafIdRef.current = null;
+        });
+      }
+    } else if (dragState.isDragging && dragState.isImageSelected) {
+      const deltaX = coords.x - dragState.dragStart.x;
+      const deltaY = coords.y - dragState.dragStart.y;
+      
+      // Calculate new position from initial position + delta
+      const newX = dragState.dragStartImagePos.x + deltaX;
+      const newY = dragState.dragStartImagePos.y + deltaY;
+      
+      // Update state immediately for responsiveness
+      setImageX(newX);
+      setImageY(newY);
+      
+      // Schedule canvas redraw using requestAnimationFrame (throttled)
       if (rafIdRef.current === null) {
         rafIdRef.current = requestAnimationFrame(() => {
           drawCanvas();
@@ -542,7 +639,7 @@ export default function CanvasEditor() {
       
       setTextSize(Math.round(newSize));
       
-      // Throttle canvas redraws using requestAnimationFrame
+      // Schedule canvas redraw using requestAnimationFrame (throttled)
       if (rafIdRef.current === null) {
         rafIdRef.current = requestAnimationFrame(() => {
           drawCanvas();
@@ -557,7 +654,14 @@ export default function CanvasEditor() {
     setIsDragging(false);
     setIsResizing(false);
     setResizeHandle(null);
-    dragStateRef.current = { isDragging: false, isTextSelected: false, dragStart: { x: 0, y: 0 }, dragStartTextPos: { x: 0, y: 0 } };
+    dragStateRef.current = { 
+      isDragging: false, 
+      isTextSelected: false, 
+      isImageSelected: false,
+      dragStart: { x: 0, y: 0 }, 
+      dragStartTextPos: { x: 0, y: 0 },
+      dragStartImagePos: { x: 0, y: 0 }
+    };
     
     // Cancel any pending animation frame and ensure final redraw
     if (rafIdRef.current !== null) {
@@ -769,6 +873,8 @@ export default function CanvasEditor() {
                 className="max-w-full h-auto border border-gray-300 dark:border-gray-600 rounded cursor-default"
                 style={{
                   aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+                  willChange: "transform", // Hint browser for optimization
+                  touchAction: "none", // Prevent default touch behaviors
                 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
