@@ -707,14 +707,14 @@ export default function CanvasEditor() {
   }, [isDragging, isResizing]);
 
   return (
-    <div className="w-screen h-screen overflow-hidden flex flex-col">
+    <div className="w-full min-h-screen flex flex-col">
       <div className="text-center py-2 shrink-0">
         <h1 className="text-xl font-bold">Canvas Editor</h1>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4 max-h-[calc(100vh-4rem)]">
         {/* Left Column - Input Controls */}
-        <div className="space-y-3 overflow-y-auto pr-2">
+        <div className="space-y-3 overflow-y-auto pr-2 max-h-full">
           {/* Background Image Input */}
           <div className="space-y-1">
             <label htmlFor="image-input" className="block text-xs font-medium">
@@ -846,7 +846,7 @@ export default function CanvasEditor() {
         </div>
 
         {/* Right Column - Canvas */}
-        <div className="flex flex-col overflow-hidden">
+        <div className="flex flex-col max-h-full">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold">Preview</h2>
@@ -858,8 +858,8 @@ export default function CanvasEditor() {
             </div>
           </div>
 
-          <div className="flex-1 flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-2 overflow-hidden">
-            <div className="bg-white rounded-lg shadow-lg p-1 h-full flex items-center justify-center">
+          <div className="flex-1 flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-2 min-h-0">
+            <div className="bg-white rounded-lg shadow-lg p-1 flex items-center justify-center w-full h-full">
               <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
