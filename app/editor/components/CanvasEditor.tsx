@@ -6,11 +6,11 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
-  const [italicIntensity, setItalicIntensity] = useState(15); // -100 to 100, controls skew angle (negative = left, positive = right)
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
   const textColor = "#c7f40c"; // Fixed neon green color
+  const italicIntensity = -35; // Fixed italic intensity (negative = left skew)
   const [maskLoaded, setMaskLoaded] = useState(false);
   const [fontLoaded, setFontLoaded] = useState(false);
   
@@ -298,7 +298,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, italicIntensity]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -668,7 +668,7 @@ export default function CanvasEditor() {
             <textarea
               id="text-input"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => setText(e.target.value.toUpperCase())}
               placeholder="Enter text to overlay on the image"
               rows={4}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -690,23 +690,6 @@ export default function CanvasEditor() {
               className="w-full"
             />
           </div>
-
-          {/* Italic Intensity */}
-          <div className="space-y-2">
-            <label htmlFor="italic-intensity" className="block text-sm font-medium">
-              Italic Intensity: {italicIntensity > 0 ? '+' : ''}{italicIntensity}%
-            </label>
-            <input
-              type="range"
-              id="italic-intensity"
-              min="-100"
-              max="100"
-              value={italicIntensity}
-              onChange={(e) => setItalicIntensity(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
 
           {/* Generate Button */}
           <button
