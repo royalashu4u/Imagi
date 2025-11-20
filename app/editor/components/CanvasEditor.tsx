@@ -48,8 +48,8 @@ export default function CanvasEditor() {
   const rafIdRef = useRef<number | null>(null);
 
   // Canvas dimensions - 9:16 ratio (portrait)
-  const CANVAS_WIDTH = 540;
-  const CANVAS_HEIGHT = 960; // 540 * 16/9 = 960
+  const CANVAS_WIDTH = 1080;
+  const CANVAS_HEIGHT = 1920; // 1080 x 1920 pixels
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -708,13 +708,10 @@ export default function CanvasEditor() {
 
   return (
     <div className="w-full min-h-screen flex flex-col">
-      <div className="text-center py-2 shrink-0">
-        <h1 className="text-xl font-bold">Canvas Editor</h1>
-      </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4 max-h-[calc(100vh-4rem)]">
+      <div className=" flex justify-center items-center max-w-7xl mx-auto">
         {/* Left Column - Input Controls */}
-        <div className="space-y-3 overflow-y-auto pr-2 max-h-full">
+        <div className="space-y-3 p-4 w-lg">
           {/* Background Image Input */}
           <div className="space-y-1">
             <label htmlFor="image-input" className="block text-xs font-medium">
@@ -846,18 +843,7 @@ export default function CanvasEditor() {
         </div>
 
         {/* Right Column - Canvas */}
-        <div className="flex flex-col max-h-full">
-          <div className="flex items-center justify-between mb-2 shrink-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold">Preview</h2>
-              {maskLoaded && (
-                <span className="text-xs text-green-600 dark:text-green-400" title="Mask is active">
-                  🎭
-                </span>
-              )}
-            </div>
-          </div>
-
+        <div className="flex flex-col h-[90vh]">
           <div className="flex-1 flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-2 min-h-0">
             <div className="bg-white rounded-lg shadow-lg p-1 flex items-center justify-center w-full h-full">
               <canvas
