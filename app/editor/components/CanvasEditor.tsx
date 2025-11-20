@@ -8,7 +8,7 @@ export default function CanvasEditor() {
   const [textSize, setTextSize] = useState(48);
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
-  const textRotation = -9; // Fixed rotation (slight angle)
+  const textRotation = -6; // Fixed rotation (slight angle)
   const textColor = "#c7f40c"; // Fixed neon green color
   const [maskLoaded, setMaskLoaded] = useState(false);
   const [fontLoaded, setFontLoaded] = useState(false);
