@@ -7,6 +7,7 @@ export default function CanvasEditor() {
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
   const [lineSpacing, setLineSpacing] = useState(0); // Spacing between first and second line (in pixels)
+  const [imageScale, setImageScale] = useState(100); // Image scale percentage (50-200%)
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -77,30 +78,41 @@ export default function CanvasEditor() {
     if (imageUrl && imageRef.current) {
       const img = imageRef.current;
       
+      // Apply scale factor (convert percentage to multiplier)
+      const scale = imageScale / 100;
+      
+      // Calculate scaled dimensions
+      const scaledWidth = CANVAS_WIDTH * scale;
+      const scaledHeight = CANVAS_HEIGHT * scale;
+      
       // Calculate to cover entire canvas (no white gaps)
       const imgAspect = img.width / img.height;
-      const canvasAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+      const scaledAspect = scaledWidth / scaledHeight;
 
       let sourceX = 0;
       let sourceY = 0;
       let sourceWidth = img.width;
       let sourceHeight = img.height;
 
-      if (imgAspect > canvasAspect) {
-        // Image is wider - crop width to match canvas ratio
-        sourceWidth = img.height * canvasAspect;
+      if (imgAspect > scaledAspect) {
+        // Image is wider - crop width to match scaled ratio
+        sourceWidth = img.height * scaledAspect;
         sourceX = (img.width - sourceWidth) / 2;
       } else {
-        // Image is taller - crop height to match canvas ratio
-        sourceHeight = img.width / canvasAspect;
+        // Image is taller - crop height to match scaled ratio
+        sourceHeight = img.width / scaledAspect;
         sourceY = (img.height - sourceHeight) / 2;
       }
 
-      // Draw image covering the entire canvas (540x960)
+      // Calculate centered position for scaled image
+      const offsetX = (CANVAS_WIDTH - scaledWidth) / 2;
+      const offsetY = (CANVAS_HEIGHT - scaledHeight) / 2;
+
+      // Draw image with scale applied
       ctx.drawImage(
         img,
         sourceX, sourceY, sourceWidth, sourceHeight, // Source (cropped area)
-        0, 0, CANVAS_WIDTH, CANVAS_HEIGHT // Destination (full canvas)
+        offsetX, offsetY, scaledWidth, scaledHeight // Destination (scaled and centered)
       );
     }
 
@@ -304,7 +316,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -363,10 +375,6 @@ export default function CanvasEditor() {
       drawCanvas();
     }
   }, [imageUrl, drawCanvas]);
-
-  const handleGenerate = () => {
-    drawCanvas();
-  };
 
   const handleDownload = () => {
     const canvas = canvasRef.current;
@@ -713,12 +721,29 @@ export default function CanvasEditor() {
             />
           </div>
 
-          {/* Generate Button */}
+          {/* Image Scale */}
+          <div className="space-y-2">
+            <label htmlFor="image-scale" className="block text-sm font-medium">
+              Image Scale: {imageScale}%
+            </label>
+            <input
+              type="range"
+              id="image-scale"
+              min="50"
+              max="200"
+              value={imageScale}
+              onChange={(e) => setImageScale(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Download Button */}
           <button
-            onClick={handleGenerate}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            onClick={handleDownload}
+            disabled={!imageUrl && !text}
+            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
           >
-            Generate
+            Download
           </button>
         </div>
 
@@ -733,13 +758,6 @@ export default function CanvasEditor() {
                 </span>
               )}
             </div>
-            <button
-              onClick={handleDownload}
-              disabled={!imageUrl && !text}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-            >
-              Download
-            </button>
           </div>
 
           <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
