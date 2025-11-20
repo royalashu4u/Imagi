@@ -707,32 +707,29 @@ export default function CanvasEditor() {
   }, [isDragging, isResizing]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Canvas Editor</h1>
-        <p className="text-muted-foreground">
-          Upload an image, add text, and download your creation
-        </p>
+    <div className="w-screen h-screen overflow-hidden flex flex-col">
+      <div className="text-center py-2 shrink-0">
+        <h1 className="text-xl font-bold">Canvas Editor</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4 overflow-hidden">
         {/* Left Column - Input Controls */}
-        <div className="space-y-6">
+        <div className="space-y-3 overflow-y-auto pr-2">
           {/* Background Image Input */}
-          <div className="space-y-2">
-            <label htmlFor="image-input" className="block text-sm font-medium">
+          <div className="space-y-1">
+            <label htmlFor="image-input" className="block text-xs font-medium">
               Background Image
             </label>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* File Upload */}
               <div>
                 <label
                   htmlFor="file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <div className="flex flex-col items-center justify-center py-2">
                     <svg
-                      className="w-10 h-10 mb-3 text-gray-400"
+                      className="w-6 h-6 mb-1 text-gray-400"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -744,11 +741,8 @@ export default function CanvasEditor() {
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
-                    <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      PNG, JPG, GIF up to 10MB
+                      Click to upload
                     </p>
                   </div>
                   <input
@@ -779,8 +773,8 @@ export default function CanvasEditor() {
           </div>
 
           {/* Text Input */}
-          <div className="space-y-2">
-            <label htmlFor="text-input" className="block text-sm font-medium">
+          <div className="space-y-1">
+            <label htmlFor="text-input" className="block text-xs font-medium">
               Text
             </label>
             <textarea
@@ -788,14 +782,14 @@ export default function CanvasEditor() {
               value={text}
               onChange={(e) => setText(e.target.value.toUpperCase())}
               placeholder="Enter text to overlay on the image"
-              rows={4}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows={2}
+              className="block w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
 
           {/* Text Size */}
-          <div className="space-y-2">
-            <label htmlFor="text-size" className="block text-sm font-medium">
+          <div className="space-y-1">
+            <label htmlFor="text-size" className="block text-xs font-medium">
               Text Size: {textSize}px
             </label>
             <input
@@ -810,8 +804,8 @@ export default function CanvasEditor() {
           </div>
 
           {/* Line Spacing */}
-          <div className="space-y-2">
-            <label htmlFor="line-spacing" className="block text-sm font-medium">
+          <div className="space-y-1">
+            <label htmlFor="line-spacing" className="block text-xs font-medium">
               Line Spacing: {lineSpacing}px
             </label>
             <input
@@ -826,8 +820,8 @@ export default function CanvasEditor() {
           </div>
 
           {/* Image Scale */}
-          <div className="space-y-2">
-            <label htmlFor="image-scale" className="block text-sm font-medium">
+          <div className="space-y-1">
+            <label htmlFor="image-scale" className="block text-xs font-medium">
               Image Scale: {imageScale}%
             </label>
             <input
@@ -845,36 +839,36 @@ export default function CanvasEditor() {
           <button
             onClick={handleDownload}
             disabled={!imageUrl && !text}
-            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            className="w-full py-2 px-3 text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
           >
             Download
           </button>
         </div>
 
         {/* Right Column - Canvas */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between mb-2 shrink-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Preview</h2>
+              <h2 className="text-sm font-semibold">Preview</h2>
               {maskLoaded && (
                 <span className="text-xs text-green-600 dark:text-green-400" title="Mask is active">
-                  🎭 Mask Active
+                  🎭
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
-            <div className="bg-white rounded-lg shadow-lg p-2">
+          <div className="flex-1 flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-2 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-lg p-1 h-full flex items-center justify-center">
               <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
-                className="max-w-full h-auto border border-gray-300 dark:border-gray-600 rounded cursor-default"
+                className="max-w-full max-h-full w-auto h-auto border border-gray-300 dark:border-gray-600 rounded cursor-default"
                 style={{
                   aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
-                  willChange: "transform", // Hint browser for optimization
-                  touchAction: "none", // Prevent default touch behaviors
+                  willChange: "transform",
+                  touchAction: "none",
                 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -883,10 +877,6 @@ export default function CanvasEditor() {
               />
             </div>
           </div>
-
-          <p className="text-xs text-gray-500 text-center">
-            Canvas size: {CANVAS_WIDTH} × {CANVAS_HEIGHT} (9:16 ratio)
-          </p>
         </div>
       </div>
     </div>
