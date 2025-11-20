@@ -6,6 +6,7 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
+  const [isItalic, setIsItalic] = useState(false);
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -108,7 +109,8 @@ export default function CanvasEditor() {
       
       // Set text properties with custom font
       const fontFamily = fontLoaded ? "FatFrank Heavy" : "Arial, sans-serif";
-      ctx.font = `bold ${textSize}px ${fontFamily}`;
+      const fontStyle = isItalic ? "italic bold" : "bold";
+      ctx.font = `${fontStyle} ${textSize}px ${fontFamily}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.lineJoin = "round";
@@ -186,14 +188,14 @@ export default function CanvasEditor() {
         } else {
           // Use adjusted font size for measurement
           const tempFontSize = index === 1 ? secondLineFontSize : textSize;
-          ctx.font = `bold ${tempFontSize}px ${fontFamily}`;
+          ctx.font = `${fontStyle} ${tempFontSize}px ${fontFamily}`;
           const metrics = ctx.measureText(line);
           maxWidth = Math.max(maxWidth, metrics.width);
         }
       });
       
       // Reset font to original
-      ctx.font = `bold ${textSize}px ${fontFamily}`;
+      ctx.font = `${fontStyle} ${textSize}px ${fontFamily}`;
       
       // Account for stroke width in bounds (shadow offset)
       const strokePadding = 15;
@@ -226,7 +228,7 @@ export default function CanvasEditor() {
         const currentLineHeight = lineFontSize * lineHeight;
         
         // Set font size for this line
-        ctx.font = `bold ${lineFontSize}px ${fontFamily}`;
+        ctx.font = `${fontStyle} ${lineFontSize}px ${fontFamily}`;
         
         // Layer 1: Dark shadow (outermost, drawn on the left side)
         ctx.strokeStyle = "#000000";
@@ -288,7 +290,7 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, isItalic]);
 
   // Load custom font on component mount
   useEffect(() => {
