@@ -6,7 +6,7 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
-  const [italicIntensity, setItalicIntensity] = useState(15); // 0-100, controls skew angle
+  const [italicIntensity, setItalicIntensity] = useState(15); // -100 to 100, controls skew angle (negative = left, positive = right)
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -220,9 +220,10 @@ export default function CanvasEditor() {
       ctx.translate(-finalX, -actualTextY);
 
       // Apply italic skew transformation (intensity-based)
-      // Convert intensity (0-100) to skew angle in radians
-      // 0 = no skew, 100 = maximum skew (~15 degrees)
-      const skewAngle = (italicIntensity / 100) * (15 * Math.PI / 180); // Max 15 degrees
+      // Convert intensity (-100 to 100) to skew angle in radians
+      // 0 = no skew, positive = right skew, negative = left skew
+      // Max ±15 degrees
+      const skewAngle = (italicIntensity / 100) * (15 * Math.PI / 180);
       if (skewAngle !== 0) {
         ctx.transform(1, 0, Math.tan(skewAngle), 1, 0, 0);
       }
@@ -693,12 +694,12 @@ export default function CanvasEditor() {
           {/* Italic Intensity */}
           <div className="space-y-2">
             <label htmlFor="italic-intensity" className="block text-sm font-medium">
-              Italic Intensity: {italicIntensity}%
+              Italic Intensity: {italicIntensity > 0 ? '+' : ''}{italicIntensity}%
             </label>
             <input
               type="range"
               id="italic-intensity"
-              min="0"
+              min="-100"
               max="100"
               value={italicIntensity}
               onChange={(e) => setItalicIntensity(Number(e.target.value))}
