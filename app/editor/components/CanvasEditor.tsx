@@ -6,7 +6,7 @@ export default function CanvasEditor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [textSize, setTextSize] = useState(48);
-  const [isItalic, setIsItalic] = useState(false);
+  const [isItalic, setIsItalic] = useState(true);
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
