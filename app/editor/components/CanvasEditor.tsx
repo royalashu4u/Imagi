@@ -16,6 +16,8 @@ export default function CanvasEditor() {
   const italicIntensity = -35; // Fixed italic intensity (negative = left skew)
   const [maskLoaded, setMaskLoaded] = useState(false);
   const [fontLoaded, setFontLoaded] = useState(false);
+  const [frameVisible, setFrameVisible] = useState(false);
+  const [frameLoaded, setFrameLoaded] = useState(false);
   
   // Interactive text positioning and manipulation
   const [textX, setTextX] = useState<number | null>(null);
@@ -38,6 +40,7 @@ export default function CanvasEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const maskRef = useRef<HTMLImageElement | null>(null);
+  const frameRef = useRef<HTMLImageElement | null>(null);
   const dragStateRef = useRef({ 
     isDragging: false, 
     isTextSelected: false, 
@@ -359,7 +362,15 @@ export default function CanvasEditor() {
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale, imageX, imageY, isImageSelected]);
+
+    // Draw frame overlay on top of everything if enabled
+    if (frameVisible && frameRef.current && frameLoaded) {
+      ctx.save();
+      // Draw frame covering the entire canvas
+      ctx.drawImage(frameRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.restore();
+    }
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale, imageX, imageY, isImageSelected, frameVisible, frameLoaded]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -398,6 +409,22 @@ export default function CanvasEditor() {
       console.error("Failed to load mask image from /mask.png", error);
     };
     maskImg.src = "/mask.png";
+  }, [drawCanvas]);
+
+  // Load frame image on component mount
+  useEffect(() => {
+    const frameImg = new Image();
+    frameImg.onload = () => {
+      frameRef.current = frameImg;
+      setFrameLoaded(true);
+      console.log("Frame loaded successfully", frameImg.width, "x", frameImg.height);
+      drawCanvas();
+    };
+    frameImg.onerror = (error) => {
+      setFrameLoaded(false);
+      console.error("Failed to load frame image from /SAFE.png", error);
+    };
+    frameImg.src = "/SAFE.png";
   }, [drawCanvas]);
 
   // Redraw canvas when image or text changes
@@ -830,6 +857,19 @@ export default function CanvasEditor() {
               onChange={(e) => setImageScale(Number(e.target.value))}
               className="w-full h-6"
             />
+          </div>
+
+          {/* Frame Toggle */}
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={frameVisible}
+                onChange={(e) => setFrameVisible(e.target.checked)}
+                className="w-4 h-4 accent-[#c7f40c] border-gray-600 rounded focus:ring-[#c7f40c] bg-[#1a1a1a]"
+              />
+              <span className="text-xs font-medium text-white">Show Frame</span>
+            </label>
           </div>
 
           {/* Download Button */}
