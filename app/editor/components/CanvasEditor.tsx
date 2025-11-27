@@ -78,7 +78,8 @@ export default function CanvasEditor() {
 
     const ctx = canvas.getContext("2d", { 
       alpha: true,
-      desynchronized: true // Better performance for frequent updates
+      desynchronized: true, // Better performance for frequent updates
+      willReadFrequently: false // Optimize for writes
     });
     if (!ctx) return;
 
@@ -314,9 +315,21 @@ export default function CanvasEditor() {
       // Restore rotation transform
       ctx.restore();
 
-      // Draw selection box if text is selected
+      // Draw selection box if text is selected (apply same transformations as text)
       if (isTextSelected && textBounds) {
         ctx.save();
+        
+        // Apply the same rotation and skew transformations as the text
+        const rotationRad = (textRotation * Math.PI) / 180;
+        ctx.translate(finalX, actualTextY);
+        ctx.rotate(rotationRad);
+        ctx.translate(-finalX, -actualTextY);
+        
+        const skewAngle = (italicIntensity / 100) * (15 * Math.PI / 180);
+        if (skewAngle !== 0) {
+          ctx.transform(1, 0, Math.tan(skewAngle), 1, 0, 0);
+        }
+        
         ctx.strokeStyle = brandColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
@@ -819,7 +832,7 @@ export default function CanvasEditor() {
               type="range"
               id="text-size"
               min="24"
-              max="120"
+              max="200"
               value={textSize}
               onChange={(e) => setTextSize(Number(e.target.value))}
               className="w-full h-6"
@@ -894,6 +907,7 @@ export default function CanvasEditor() {
                   aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
                   willChange: "transform",
                   touchAction: "none",
+                  imageRendering: "auto",
                 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
