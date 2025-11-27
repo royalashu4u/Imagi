@@ -72,11 +72,6 @@ export default function CanvasEditor() {
     }
   };
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    setImageUrl(url || null);
-  };
-
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -179,12 +174,13 @@ export default function CanvasEditor() {
       const lines: string[] = [];
 
       // Process each user-entered line (word wrap if needed)
+      // Use double spacing between words
       for (const userLine of userLines) {
         const words = userLine.trim().split(" ");
         let currentLine = "";
 
         for (const word of words) {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testLine = currentLine ? `${currentLine}  ${word}` : word; // Double space between words
           const metrics = ctx.measureText(testLine);
           if (metrics.width > CANVAS_WIDTH * 5) {
             lines.push(currentLine);
@@ -740,7 +736,7 @@ export default function CanvasEditor() {
         {/* Left Column - Input Controls */}
         <div className="space-y-3 pr-2 my-auto">
           {/* Background Image Input */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <label htmlFor="image-input" className="block text-xs font-medium text-white">
               Background Image
             </label>
@@ -749,11 +745,11 @@ export default function CanvasEditor() {
               <div>
                 <label
                   htmlFor="file-upload"
-                  className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[#c7f40c]/30 rounded-lg cursor-pointer bg-[#1a1a1a] hover:bg-[#252525] hover:border-[#c7f40c]/50 transition-colors"
+                  className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#c7f40c]/30 rounded-lg cursor-pointer bg-[#1a1a1a] hover:bg-[#252525] hover:border-[#c7f40c]/50 transition-colors"
                 >
                   <div className="flex flex-col items-center justify-center py-2">
                     <svg
-                      className="w-6 h-6 mb-1 text-[#c7f40c]"
+                      className="w-8 h-8 mb-2 text-[#c7f40c]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -765,8 +761,11 @@ export default function CanvasEditor() {
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
-                    <p className="text-xs text-white/70">
-                      Click to upload
+                    <p className="text-sm text-white/70 font-medium">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-white/50 mt-1">
+                      PNG, JPG, GIF up to 10MB
                     </p>
                   </div>
                   <input
@@ -779,20 +778,20 @@ export default function CanvasEditor() {
                 </label>
               </div>
 
-              {/* URL Input */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <span className="text-white/50">OR</span>
-                </div>
-                  <input
-                    type="url"
-                    id="image-input"
-                    value={imageUrl || ""}
-                    onChange={handleUrlChange}
-                    placeholder="Enter background image URL"
-                    className="block w-full pl-12 pr-3 py-2 border border-[#c7f40c]/30 rounded-lg bg-[#1a1a1a] text-white placeholder:text-white/40 focus:ring-2 focus:ring-[#c7f40c] focus:border-[#c7f40c] transition-colors"
-                  />
-              </div>
+              {/* Clear Image Button - Only show when image is selected */}
+              {imageUrl && (
+                <button
+                  onClick={() => {
+                    setImageUrl(null);
+                    setImageX(null);
+                    setImageY(null);
+                    setIsImageSelected(false);
+                  }}
+                  className="w-full py-2 px-3 text-sm bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 text-red-400 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-[#0a0a0a]"
+                >
+                  Clear Image
+                </button>
+              )}
             </div>
           </div>
 
@@ -806,8 +805,8 @@ export default function CanvasEditor() {
               value={text}
               onChange={(e) => setText(e.target.value.toUpperCase())}
               placeholder="Enter text to overlay on the image"
-              rows={2}
-              className="block w-full px-2 py-1 text-sm border border-[#c7f40c]/30 rounded-lg bg-[#1a1a1a] text-white placeholder:text-white/40 focus:ring-2 focus:ring-[#c7f40c] focus:border-[#c7f40c] resize-none transition-colors"
+              rows={6}
+              className="block w-full px-3 py-2 text-sm border border-[#c7f40c]/30 rounded-lg bg-[#1a1a1a] text-white placeholder:text-white/40 focus:ring-2 focus:ring-[#c7f40c] focus:border-[#c7f40c] resize-y min-h-[120px] transition-colors"
             />
           </div>
 
@@ -868,7 +867,7 @@ export default function CanvasEditor() {
                 onChange={(e) => setFrameVisible(e.target.checked)}
                 className="w-4 h-4 accent-[#c7f40c] border-gray-600 rounded focus:ring-[#c7f40c] bg-[#1a1a1a]"
               />
-              <span className="text-xs font-medium text-white">Show Frame</span>
+              <span className="text-xs font-medium text-white">Shape margin</span>
             </label>
           </div>
 
