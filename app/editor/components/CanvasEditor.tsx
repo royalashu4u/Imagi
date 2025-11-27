@@ -867,7 +867,7 @@ export default function CanvasEditor() {
                 onChange={(e) => setFrameVisible(e.target.checked)}
                 className="w-4 h-4 accent-[#c7f40c] border-gray-600 rounded focus:ring-[#c7f40c] bg-[#1a1a1a]"
               />
-              <span className="text-xs font-medium text-white">Shape margin</span>
+              <span className="text-xs font-medium text-white">Safe margin</span>
             </label>
           </div>
 

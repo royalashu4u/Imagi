@@ -31,7 +31,7 @@ input[type="range"] {
   outline: none;
   padding: 0;
   margin: 7px 0;
-}
+  }
 
 input[type="range"]::-webkit-slider-runnable-track {
   background: #3a3a3a;
