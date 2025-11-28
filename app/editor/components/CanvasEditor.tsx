@@ -8,6 +8,7 @@ export default function CanvasEditor() {
   const [textSize, setTextSize] = useState(48);
   const [lineSpacing, setLineSpacing] = useState(0); // Spacing between first and second line (in pixels)
   const [imageScale, setImageScale] = useState(100); // Image scale percentage (50-200%)
+  const linePriority = 'first'; // Fixed priority: first line
   // Fixed style settings - not user changeable
   const lineHeight = 0.8; // Fixed line height
   const textRotation = -4; // Fixed rotation (slight angle)
@@ -50,6 +51,9 @@ export default function CanvasEditor() {
     dragStartImagePos: { x: 0, y: 0 }
   });
   const rafIdRef = useRef<number | null>(null);
+  const lastFrameTimeRef = useRef<number>(0);
+  const targetFPS = 60;
+  const frameInterval = 1000 / targetFPS; // ~16.67ms for 60fps
 
   // Canvas dimensions - 9:16 ratio (portrait)
   const CANVAS_WIDTH = 1080;
@@ -83,9 +87,10 @@ export default function CanvasEditor() {
     });
     if (!ctx) return;
 
-    // Enable image smoothing for better quality
+    // Reduce quality during drag for better performance
+    const isDraggingNow = isDragging || isResizing;
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    ctx.imageSmoothingQuality = isDraggingNow ? "low" : "high";
 
     // Clear canvas
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -140,8 +145,8 @@ export default function CanvasEditor() {
         offsetX, offsetY, destWidth, destHeight // Destination (scaled and positioned)
       );
 
-      // Draw selection box if image is selected
-      if (isImageSelected && imageBounds) {
+      // Draw selection box if image is selected (skip during drag for performance)
+      if (isImageSelected && imageBounds && !isDraggingNow) {
         ctx.save();
         ctx.strokeStyle = brandColor;
         ctx.lineWidth = 2;
@@ -202,32 +207,66 @@ export default function CanvasEditor() {
       const finalX = textX !== null ? textX : CANVAS_WIDTH / 2;
       const actualTextY = textY !== null ? textY : CANVAS_HEIGHT / 2;
       
-      // Calculate font sizes: first line uses original size, second line matches width
-      let firstLineWidth = 0;
+      // Calculate font sizes: both lines adjust to maintain equal width
+      let firstLineFontSize = textSize;
       let secondLineFontSize = textSize;
+      let firstLineWidth = 0;
+      let targetWidth = 0;
       
       if (displayLines.length > 0) {
         // Measure first line width with original font size
         const firstLineMetrics = ctx.measureText(displayLines[0]);
         firstLineWidth = firstLineMetrics.width;
+        targetWidth = firstLineWidth;
         
-        // If there's a second line, calculate font size to match first line width
+        // If there's a second line, calculate font sizes to match widths
         if (displayLines.length > 1 && firstLineWidth > 0) {
           const secondLine = displayLines[1];
           // Measure second line with original font size
           const secondLineMetrics = ctx.measureText(secondLine);
           const secondLineWidth = secondLineMetrics.width;
           
-          // Calculate scale factor to match widths
           if (secondLineWidth > 0) {
-            const scaleFactor = firstLineWidth / secondLineWidth;
-            secondLineFontSize = Math.max(12, Math.min(textSize, textSize * scaleFactor));
+            // Calculate target width based on priority
+            if (linePriority === 'first') {
+              // First line priority: use first line width as target, adjust second line
+              targetWidth = firstLineWidth;
+              const secondLineScale = targetWidth / secondLineWidth;
+              secondLineFontSize = textSize * secondLineScale;
+              // First line stays closer to original size (minimal adjustment)
+              firstLineFontSize = textSize;
+            } else {
+              // Second line priority: use second line width as target, adjust first line
+              targetWidth = secondLineWidth;
+              const firstLineScale = targetWidth / firstLineWidth;
+              firstLineFontSize = textSize * firstLineScale;
+              // Second line stays closer to original size (minimal adjustment)
+              secondLineFontSize = textSize;
+            }
+            
+            // Apply min/max constraints
+            const minFontSize = 12;
+            const maxFontSize = textSize * 2; // Allow up to 2x the base size
+            firstLineFontSize = Math.max(minFontSize, Math.min(maxFontSize, firstLineFontSize));
+            secondLineFontSize = Math.max(minFontSize, Math.min(maxFontSize, secondLineFontSize));
+            
+            // Recalculate target width based on constrained font sizes (skip during drag)
+            if (!isDraggingNow) {
+              ctx.font = `bold ${firstLineFontSize}px ${fontFamily}`;
+              const adjustedFirstWidth = ctx.measureText(displayLines[0]).width;
+              ctx.font = `bold ${secondLineFontSize}px ${fontFamily}`;
+              const adjustedSecondWidth = ctx.measureText(displayLines[1]).width;
+              targetWidth = Math.max(adjustedFirstWidth, adjustedSecondWidth);
+            } else {
+              // During drag, use estimated width to avoid expensive calculations
+              targetWidth = linePriority === 'first' ? firstLineWidth : secondLineWidth;
+            }
           }
         }
       }
       
       // Calculate total height with different line heights
-      const firstLineHeight = textSize * lineHeight;
+      const firstLineHeight = firstLineFontSize * lineHeight;
       const secondLineHeight = displayLines.length > 1 ? secondLineFontSize * lineHeight : firstLineHeight;
       const extraSpacing = displayLines.length > 1 ? lineSpacing : 0; // Add extra spacing only if there's a second line
       const totalHeight = displayLines.length > 1 
@@ -236,21 +275,20 @@ export default function CanvasEditor() {
       
       const startY = actualTextY - (totalHeight - firstLineHeight) / 2;
 
-      // Calculate text bounds for hit detection
-      let maxWidth = firstLineWidth;
-      displayLines.forEach((line, index) => {
-        if (index === 0) {
-          maxWidth = firstLineWidth;
-        } else {
-          // Use adjusted font size for measurement
-          const tempFontSize = index === 1 ? secondLineFontSize : textSize;
-          ctx.font = `bold ${tempFontSize}px ${fontFamily}`;
-          const metrics = ctx.measureText(line);
-          maxWidth = Math.max(maxWidth, metrics.width);
-        }
-      });
+      // Calculate text bounds for hit detection (use target width)
+      // Skip expensive recalculation during drag for better performance
+      let maxWidth = targetWidth > 0 ? targetWidth : firstLineWidth;
+      if (displayLines.length > 1 && !isDraggingNow) {
+        // Verify both lines have same width with their adjusted font sizes
+        // Only do this when not dragging to improve performance
+        ctx.font = `bold ${firstLineFontSize}px ${fontFamily}`;
+        const firstWidth = ctx.measureText(displayLines[0]).width;
+        ctx.font = `bold ${secondLineFontSize}px ${fontFamily}`;
+        const secondWidth = ctx.measureText(displayLines[1]).width;
+        maxWidth = Math.max(firstWidth, secondWidth);
+      }
       
-      // Reset font to original
+      // Reset font to original for other operations
       ctx.font = `bold ${textSize}px ${fontFamily}`;
       
       // Account for stroke width in bounds (shadow offset)
@@ -288,17 +326,22 @@ export default function CanvasEditor() {
       // Draw each line with shadow and neon green fill (no white outline)
       let currentY = startY;
       displayLines.forEach((line, index) => {
-        // Use adjusted font size for second line, original for others
-        const lineFontSize = index === 1 && displayLines.length > 1 ? secondLineFontSize : textSize;
+        // Use adjusted font size for first and second lines
+        const lineFontSize = index === 0 
+          ? firstLineFontSize 
+          : (index === 1 && displayLines.length > 1 ? secondLineFontSize : textSize);
         const currentLineHeight = lineFontSize * lineHeight;
         
         // Set font size for this line
         ctx.font = `bold ${lineFontSize}px ${fontFamily}`;
         
-        // Layer 1: Dark shadow (outermost, drawn on the left side)
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = Math.max(8, lineFontSize * 0.2);
-        ctx.strokeText(line, finalX - 4, currentY);
+        // Skip shadow during drag for better performance
+        if (!isDraggingNow) {
+          // Layer 1: Dark shadow (outermost, drawn on the left side)
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = Math.max(8, lineFontSize * 0.2);
+          ctx.strokeText(line, finalX - 4, currentY);
+        }
         
         // Layer 2: Neon green fill (main text)
         ctx.fillStyle = textColor; // #c7f40c
@@ -316,7 +359,8 @@ export default function CanvasEditor() {
       ctx.restore();
 
       // Draw selection box if text is selected (apply same transformations as text)
-      if (isTextSelected && textBounds) {
+      // Only draw selection box when not dragging (draw it on mouse up)
+      if (isTextSelected && textBounds && !isDraggingNow) {
         ctx.save();
         
         // Apply the same rotation and skew transformations as the text
@@ -364,22 +408,47 @@ export default function CanvasEditor() {
       setTextBounds(null);
     }
 
-    // Draw watermark overlay on top of everything (always on top layer)
-    if (maskRef.current) {
+    // Draw watermark overlay on top of everything (skip during drag for performance)
+    if (maskRef.current && !isDraggingNow) {
       ctx.save();
       // Draw watermark covering the entire canvas
       ctx.drawImage(maskRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
 
-    // Draw frame overlay on top of everything if enabled
-    if (frameVisible && frameRef.current && frameLoaded) {
+    // Draw frame overlay on top of everything if enabled (skip during drag for performance)
+    if (frameVisible && frameRef.current && frameLoaded && !isDraggingNow) {
       ctx.save();
       // Draw frame covering the entire canvas
       ctx.drawImage(frameRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.restore();
     }
-  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale, imageX, imageY, isImageSelected, frameVisible, frameLoaded]);
+  }, [imageUrl, text, textSize, textX, textY, isTextSelected, fontLoaded, lineSpacing, imageScale, imageX, imageY, isImageSelected, frameVisible, frameLoaded, isDragging, isResizing]);
+
+  // Optimized redraw scheduler with frame rate limiting (60fps)
+  const scheduleRedraw = useCallback(() => {
+    const now = performance.now();
+    const timeSinceLastFrame = now - lastFrameTimeRef.current;
+    
+    // Cancel any pending frame
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+    
+    // If enough time has passed, draw immediately for smooth 60fps
+    if (timeSinceLastFrame >= frameInterval) {
+      lastFrameTimeRef.current = now;
+      drawCanvas();
+      rafIdRef.current = null;
+    } else {
+      // Schedule for the next frame
+      rafIdRef.current = requestAnimationFrame(() => {
+        lastFrameTimeRef.current = performance.now();
+        drawCanvas();
+        rafIdRef.current = null;
+      });
+    }
+  }, [drawCanvas, frameInterval]);
 
   // Load custom font on component mount
   useEffect(() => {
@@ -607,6 +676,7 @@ export default function CanvasEditor() {
     handleDragOrResize(e);
   };
 
+
   // Handle drag or resize (works with window events too)
   const handleDragOrResize = (e: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -636,13 +706,8 @@ export default function CanvasEditor() {
       setTextX(newX);
       setTextY(newY);
       
-      // Schedule canvas redraw using requestAnimationFrame (throttled)
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          drawCanvas();
-          rafIdRef.current = null;
-        });
-      }
+      // Schedule canvas redraw with frame rate limiting for smooth 60fps
+      scheduleRedraw();
     } else if (dragState.isDragging && dragState.isImageSelected) {
       const deltaX = coords.x - dragState.dragStart.x;
       const deltaY = coords.y - dragState.dragStart.y;
@@ -655,13 +720,8 @@ export default function CanvasEditor() {
       setImageX(newX);
       setImageY(newY);
       
-      // Schedule canvas redraw using requestAnimationFrame (throttled)
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          drawCanvas();
-          rafIdRef.current = null;
-        });
-      }
+      // Schedule canvas redraw with frame rate limiting for smooth 60fps
+      scheduleRedraw();
     } else if (isResizing && resizeHandle) {
       const deltaX = coords.x - resizeStart.x;
       const deltaY = coords.y - resizeStart.y;
@@ -676,13 +736,8 @@ export default function CanvasEditor() {
       
       setTextSize(Math.round(newSize));
       
-      // Schedule canvas redraw using requestAnimationFrame (throttled)
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          drawCanvas();
-          rafIdRef.current = null;
-        });
-      }
+      // Schedule canvas redraw with frame rate limiting for smooth 60fps
+      scheduleRedraw();
     }
   };
 
